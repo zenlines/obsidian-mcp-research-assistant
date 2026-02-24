@@ -1,4 +1,9 @@
-# Research Scaffolding Skill
+---
+name: research-assistant
+description: Provides guidance on how to serve as a research assistant, how to work with the user's Obsidian vault, how to create, edit, and format notes. Use when the user asks you to act as a research assistant, when the user asks you to work with their Obsidian vault, when the user asks about their Obsidian notes, or when the user asks you to create a scaffold of notes for a topic.
+---
+
+# Research Assistant
 
 ## Vault Conventions
 
