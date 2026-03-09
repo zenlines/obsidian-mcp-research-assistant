@@ -1,5 +1,9 @@
 # AI-Assisted Knowledge Management for Obsidian
 
+## Overview
+
+This project integrates Claude Desktop with Obsidian Notes allowing Claude to read, edit, and create notes in the user-specified Obsidian vault. Claude Skills are leveraged to equip Claude with knowledge of Obsidian note formatting, expected actions for given user requests, and a general research assistant workflow which can be customized and extended.
+
 ## Quick Start
 
 ### Prerequisites
