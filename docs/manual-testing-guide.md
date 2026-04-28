@@ -35,6 +35,12 @@ Before running any tests:
 - No raw HTML in the note body
 - No `.obsidian/` directory contents referenced
 
+
+Results:
+File is created. No YAML frontmatter included (which is probably fine or preferred given the note is small).
+
+TODO: Review frontmatter creation.
+
 ---
 
 ### OV-02: WikiLink Formatting
@@ -70,6 +76,10 @@ Before running any tests:
 - Original sections are byte-for-byte identical to pre-edit state
 - New section appears at the end of the note
 
+Result:
+
+write_file was used instead of edit_file. New section added as expected.
+
 ---
 
 ### OV-04: Surgical Edit — Modify Specific Section
@@ -88,6 +98,8 @@ Before running any tests:
 - Diff shows only the Overview paragraph changed
 - No other sections were reformatted or reordered
 - WikiLinks and headings outside the target section are unchanged
+
+TODO: modify this test. It's too dependent on existing note content which may already mention chloroplasts prior to the test. Doesn't have to be so specific, just has to provide guidance on testing edits to a specific section of a note
 
 ---
 
@@ -415,33 +427,3 @@ Before running any tests:
 - No permission error returned
 
 ---
-
-## Test Log
-
-Use this table to record results for each test run.
-
-| Test ID | Date | Result | Notes |
-|---------|------|--------|-------|
-| OV-01 | | | |
-| OV-02 | | | |
-| OV-03 | | | |
-| OV-04 | | | |
-| OV-05 | | | |
-| RA-01 | | | |
-| RA-02 | | | |
-| RA-03 | | | |
-| RA-04 | | | |
-| RA-05 | | | |
-| RA-06 | | | |
-| TM-01 | | | |
-| TM-02 | | | |
-| TM-03 | | | |
-| TM-04 | | | |
-| TM-05 | | | |
-| TM-06 | | | |
-| TM-07 | | | |
-| TM-08 | | | |
-| XS-01 | | | |
-| XS-02 | | | |
-| MT-01 | | | |
-| MT-02 | | | |
