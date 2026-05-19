@@ -1,11 +1,11 @@
 ---
 name: task-manager
-description: Task and project capture for Obsidian using the TaskNotes plugin. Use when user says "I need to...", "remind me to...", "I should...", "add a task for...", "create a project for...", mentions a deadline or due date in context of something actionable, or wants to brainstorm a multi-step plan or project. Do NOT use for learning or knowledge scaffolding (use research-assistant for that).
+description: Task, project, and calendar capture for Obsidian and Google Calendar. Use when user says "I need to...", "remind me to...", "block time for...", "schedule a meeting...", "I should...", "add a task for...", "create a project for...", mentions a deadline or due date, or wants to brainstorm a multi-step plan or project. Do NOT use for learning or knowledge scaffolding (use research-assistant for that).
 metadata:
   author: Charles Loughin
-  version: 0.1.0
+  version: 0.2.0
   category: task-management
-  tags: [obsidian, tasks, projects, tasknotes]
+  tags: [obsidian, tasks, projects, tasknotes, google-calendar]
 ---
 
 # Task Manager Skill
@@ -61,9 +61,78 @@ Users may use shorthand notation. Parse these automatically:
 | `+ProjectName` | `projects: ["[[ProjectName]]"]` |
 | `#tag` | `tags: ["tag"]` |
 | `due:2026-03-15` or "due Friday" | `due: 2026-03-15` |
-| "urgent", "high priority" | `priority: 1-urgent` or `priority: 2-high` |
+| "urgent", "high priority" | `priority: high` |
 
 Convert all relative dates ("next Friday", "in 3 days", "end of week") to ISO 8601 format based on today's date before writing to YAML.
+
+---
+
+## Intent Triage — Task vs. Reminder vs. Calendar Event
+
+Every actionable request must be routed before any note or event is created. Use this decision table. When multiple signals apply, use the highest row that matches.
+
+| Signal | Route |
+|--------|-------|
+| "block [duration] for", "reserve time for", "set aside [duration]" | **Calendar event** (time block, no task note unless asked) |
+| "meeting / call / appointment at [time]" | **Calendar event** + optional TaskNote |
+| "remind me at [time]", "alert me at", "ping me at" | **Calendar reminder** (timed notification; no duration block) |
+| Deadline + specific clock time ("by 3pm Thursday") | **TaskNote** + **Calendar reminder** at that time |
+| "I need to / I should / I have to" + no specific time | **TaskNote only** |
+| "someday", "eventually", "low priority", no date | **TaskNote only** (priority: low) |
+| 3+ action items, multi-week scope, "project" | **Project workflow** (see Project Workflow section) |
+
+**When in doubt between reminder and event:** a reminder is a notification at a point in time with no duration; an event occupies a block of time on the calendar. "Remind me to call the dentist at noon" → reminder. "Block an hour for the dentist at noon" → event.
+
+**Confirmation before routing:** Always confirm the route with the user before creating anything:
+> "I'll create a TaskNote for this with a due date of Thursday and a calendar reminder at 3pm. Does that sound right?"
+
+Do not silently create calendar events — they appear on a shared or visible calendar and cannot always be undone cleanly.
+
+---
+
+## Natural Language Time Parsing
+
+Convert all time expressions to absolute values before creating any note or event. Never write relative strings ("next Friday", "tomorrow") into YAML or calendar fields.
+
+### Date Expressions
+
+| Expression | Resolution rule |
+|------------|----------------|
+| "today" | Current date (YYYY-MM-DD) |
+| "tomorrow" | Current date + 1 day |
+| "next [weekday]" | The named weekday in the next calendar week (not the current week, even if that day is still ahead) |
+| "this [weekday]" | The named weekday in the current calendar week |
+| "this weekend" | The nearest Saturday |
+| "end of week" / "EOW" | Friday of the current week |
+| "end of month" / "EOM" | Last calendar day of the current month |
+| "in [N] days" | Current date + N days |
+| "in [N] weeks" | Current date + N×7 days |
+
+### Time-of-Day Expressions
+
+| Expression | Resolution rule |
+|------------|----------------|
+| "morning" | 09:00 local time |
+| "afternoon" | 14:00 local time |
+| "evening" | 18:00 local time |
+| "end of day" / "EOD" / "COB" | 17:00 local time |
+| "noon" / "midday" | 12:00 |
+| "midnight" | 00:00 (next calendar day if "by midnight tonight") |
+
+### Combined Examples
+
+| User says | Resolves to |
+|-----------|-------------|
+| "by Thursday EOD" | due: [Thursday's date], reminder at 17:00 Thursday |
+| "next Monday morning" | scheduled: [next Monday], time: 09:00 |
+| "in 3 days at 2pm" | date: [current date + 3], time: 14:00 |
+| "this Friday by noon" | due: [this Friday], reminder at 12:00 Friday |
+| "end of next week" | due: [Friday of next week] |
+| "COB tomorrow" | due: [tomorrow], reminder at 17:00 tomorrow |
+
+**If today's date is uncertain:** ask the user before computing any relative date. Do not guess.
+
+**Timezone:** Use the user's local timezone unless they specify otherwise. If timezone is unknown, use the system timezone and note it in the task details.
 
 ---
 
@@ -144,7 +213,7 @@ Once approved:
 ---
 title: [Task Name]
 status: open
-priority: 3-medium
+priority: normal
 due: YYYY-MM-DD
 scheduled:
 dateCreated: YYYY-MM-DDTHH:MM:SS±HH:MM
@@ -196,17 +265,15 @@ status: active
 
 | Value | Meaning |
 |-------|---------|
-| `1-urgent` | Must do immediately |
-| `2-high` | Important, do soon |
-| `3-medium` | Normal priority (default) |
-| `4-low` | Someday / maybe |
+| `high` | Important, do soon or immediately |
+| `normal` | Default priority |
+| `low` | Someday / maybe |
 
-When priority is not specified, default to `3-medium`.
+When priority is not specified, default to `normal`.
 
 **Inferring priority from language:**
-- "urgent", "ASAP", "critical", "blocking" → `1-urgent`
-- "important", "high priority", "soon" → `2-high`
-- "eventually", "someday", "low priority", "nice to have" → `4-low`
+- "urgent", "ASAP", "critical", "blocking", "important", "soon" → `high`
+- "eventually", "someday", "low priority", "nice to have" → `low`
 
 ---
 
@@ -265,6 +332,61 @@ Should I create a task note for that? If yes, give me any details like due date 
 
 ---
 
+## Google Calendar Integration
+
+When the intent triage routes to a calendar event or reminder, use the Google Calendar MCP tools. These tools are separate from the TaskNotes MCP — they operate on Google Calendar, not Obsidian.
+
+### Available Operations
+
+| Goal | Tool to call |
+|------|-------------|
+| Create a timed event or reminder | `create_event` with title, start datetime, end datetime |
+| Check for conflicts / find open slots | `suggest_time` for the target time range |
+| Read an existing event | `get_event` by event ID |
+| Update an existing event | `update_event` by event ID |
+| List upcoming events | `list_events` with time range |
+| RSVP to an invitation | `respond_to_event` |
+| Remove an event | `delete_event` |
+| See which calendars are available | `list_calendars` |
+
+### Event Creation Workflow
+
+1. **Confirm the route** with the user (see Intent Triage section)
+2. **Check for conflicts** — call `suggest_time` for the target time window before creating
+3. **Create the TaskNote first** (if applicable) — get the vault path back from `tasknotes_create_task`
+4. **Create the calendar event** — call `create_event`; include the vault path in the event description for bidirectional linking
+5. **Update the TaskNote** — use `edit_file` to add the calendar event ID to the note's frontmatter
+
+### Bidirectional Linking Convention
+
+**In the TaskNote frontmatter:**
+```yaml
+calendar_event_id: [event ID returned by create_event]
+```
+
+**In the calendar event description:**
+```
+Linked note: TaskNotes/Tasks/[filename].md
+```
+
+This links both artifacts so either one surfaces the other. The TaskNote is always created first — if calendar creation fails, the TaskNote still exists with a note that linking failed.
+
+### Failure Handling
+
+- **If TaskNote creation succeeds but calendar creation fails:** report what happened; do not roll back the TaskNote. Add a `calendar_event_id: pending` field to the note so the user knows to retry.
+- **If conflict detected:** report the conflict and ask whether to proceed, reschedule, or skip the calendar step.
+- **If Calendar MCP is unreachable:** create the TaskNote only; report that the calendar step was skipped.
+
+### Response Pattern After Creating Both
+
+```
+TaskNote created: [[Task Title]]
+Calendar event created: [Event Title] on [Date] at [Time]–[End Time]
+Both are linked — the note references the event ID, the event links back to the note.
+```
+
+---
+
 ## Interaction with Other Skills
 
 When a project involves significant research or learning, **both skills can be active in the same conversation**:
@@ -281,6 +403,7 @@ Example: A "Learn Rust" project could have task notes for each milestone (`TaskN
 
 Before completing any task or project creation:
 
+✓ Intent triage completed — route confirmed with user before creating anything
 ✓ All YAML fields present (blank optional fields retained, not omitted)
 ✓ `dateCreated` and `dateModified` set to current timestamp with timezone
 ✓ Task notes stored in `TaskNotes/Tasks/`
@@ -289,3 +412,4 @@ Before completing any task or project creation:
 ✓ Project hub lists all task notes as WikiLinks under `## Tasks`
 ✓ User explicitly confirmed project structure before creation
 ✓ Relative dates converted to ISO 8601 absolute dates
+✓ For calendar events: `suggest_time` conflict check run, TaskNote created before `create_event`, bidirectional linking set

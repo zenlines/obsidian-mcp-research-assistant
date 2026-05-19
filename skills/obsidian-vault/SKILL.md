@@ -16,6 +16,56 @@ Authoritative reference for all Claude interactions with the Obsidian vault via 
 
 ---
 
+## CRITICAL: Editing Existing Notes
+
+> **ALWAYS use `edit_file` for any modification to an existing note.**
+> **NEVER use `write_file` on a file that already exists.**
+>
+> `write_file` is for new file creation only. Using it on an existing note overwrites
+> the entire file, destroying content outside the targeted section.
+
+### Surgical Edit Protocol
+
+When modifying an **existing** note:
+
+1. **Read the file first** — use `read_file` to get the current content
+2. **Run a dry run** — call `edit_file` with `dryRun: true` to preview what will change
+3. **Apply the edit** — if the dry run looks correct, call `edit_file` with `dryRun: false` (or omit dryRun)
+4. **Never alter content outside the targeted section** — preserve whitespace, casing, and structure
+
+### Targeting the Right Section
+
+| Intent | `oldText` to target |
+|--------|-------------------|
+| Add a new section | The last line of the file (append after it) |
+| Modify a specific section | That section's `## Header` + its full content block |
+| Fix a single fact or sentence | The minimum containing paragraph |
+| Fix a WikiLink | The exact surrounding sentence containing the link |
+
+### Example
+
+```
+edit_file({
+  path: "vault/Neural Networks.md",
+  edits: [{
+    oldText: "## Overview\nNeural networks are computational models inspired by the brain.",
+    newText: "## Overview\nNeural networks are computational models inspired by biological neurons in the brain. They consist of layers of interconnected nodes that transform input data through learned weights.\n\nSee [[Deep Learning]] for modern applications of large-scale neural networks."
+  }],
+  dryRun: true   // preview first
+})
+```
+
+---
+
+## CRITICAL: YAML Frontmatter
+
+> **YAML frontmatter is required on ALL notes** — hub, subtopic, concept, task, and source notes.
+> The only exception is an ephemeral scratch note the user explicitly asks for.
+>
+> A note without frontmatter is incomplete. Always include it, even on short notes.
+
+---
+
 ## Vault Filesystem Conventions
 
 - **Work only with `.md` files** — these are the actual notes
@@ -57,7 +107,7 @@ All fields must be present. Leave optional fields blank rather than omitting the
 ---
 title: [Task Name]
 status: open
-priority: 3-medium
+priority: normal
 due: YYYY-MM-DD
 scheduled:
 dateCreated: YYYY-MM-DDTHH:MM:SS±HH:MM
@@ -213,7 +263,7 @@ tags: [concept]
 ---
 title: [Task Name]
 status: open
-priority: 3-medium
+priority: normal
 due: YYYY-MM-DD
 scheduled:
 dateCreated: YYYY-MM-DDTHH:MM:SS±HH:MM
@@ -257,49 +307,6 @@ status: active
 
 ## Related
 [WikiLinks to related research notes or other projects]
-```
-
----
-
-## Surgical Edit Protocol
-
-When modifying an **existing** note, always use `edit_file` instead of rewriting the whole file with `write_file`. This preserves unrelated content and avoids token waste.
-
-### Step-by-Step
-
-1. **Read the file first** — use `read_file` to get the current content
-2. **Run a dry run** — call `edit_file` with `dryRun: true` to preview what will change before applying
-3. **Apply the edit** — if the dry run looks correct, call `edit_file` with `dryRun: false` (or omit dryRun)
-4. **Never alter content outside the targeted section** — preserve whitespace, casing, and structure of everything else
-
-### Decision Tree
-
-| Intent | `oldText` to target |
-|--------|-------------------|
-| Add a new section | The last line of the file (append after it) |
-| Modify a specific section | That section's `## Header` + its full content block |
-| Fix a single fact or sentence | The minimum containing paragraph |
-| Fix a WikiLink | The exact surrounding sentence containing the link |
-
-### What NOT to Do
-
-- Do not reformat or reorder unrelated sections during an edit pass
-- Do not change heading levels, bullet style, or whitespace outside the target
-- Do not use `write_file` for modifications — only use it for **new file creation**
-
-### Example
-
-Expanding the "Overview" section of an existing note:
-
-```
-edit_file({
-  path: "vault/Neural Networks.md",
-  edits: [{
-    oldText: "## Overview\nNeural networks are computational models inspired by the brain.",
-    newText: "## Overview\nNeural networks are computational models inspired by biological neurons in the brain. They consist of layers of interconnected nodes that transform input data through learned weights.\n\nSee [[Deep Learning]] for modern applications of large-scale neural networks."
-  }],
-  dryRun: true   // preview first
-})
 ```
 
 ---

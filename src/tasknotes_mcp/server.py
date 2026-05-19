@@ -73,6 +73,40 @@ async def tasknotes_get_schema() -> dict[str, Any]:
 
 
 @mcp.tool()
+async def tasknotes_search_projects(query: str = "") -> dict[str, Any]:
+    """Return existing project names from the vault, optionally filtered by a query string.
+
+    Use this when the user mentions a project and you need to confirm whether
+    a matching project note already exists before populating the `projects`
+    field. Always confirm with the user before linking a task to a project —
+    this tool surfaces the candidates, it does not make the decision.
+
+    Parameters:
+      query: Optional substring to filter project names (case-insensitive).
+        Pass an empty string or omit to return all projects.
+
+    Returns:
+      {"projects": ["[[Project A]]", "[[Project B]]", ...]}
+      or {"error": ..., "message": ...} on failure.
+    """
+    try:
+        options = await _client.filter_options()
+    except TaskNotesUnreachable as e:
+        return {"error": "unreachable", "message": str(e)}
+    except TaskNotesAPIError as e:
+        return {"error": "api_error", "status": e.status_code, "message": e.body}
+
+    raw_projects = options.get("projects", [])
+    # filter_options returns project names as plain strings; wrap them in
+    # wiki-link brackets so they're ready to use in the projects field.
+    names = [p if isinstance(p, str) else p.get("value", "") for p in raw_projects]
+    if query:
+        q = query.lower()
+        names = [n for n in names if q in n.lower()]
+    return {"projects": [f"[[{n}]]" for n in names if n]}
+
+
+@mcp.tool()
 async def tasknotes_create_task(
     title: str,
     status: str = "open",
